@@ -14,6 +14,9 @@ module.exports = (sequelize, Sequelize) => {
         },
         is_admin: {
             type: Sequelize.BOOLEAN
+        },
+        token: {
+            type: Sequelize.STRING
         }
     });
     return User;

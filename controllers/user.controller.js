@@ -1,13 +1,28 @@
 const db = require("../models");
 const User = db.user;
-const Op = db.Sequelize.Op;
-const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+var crypto = require('crypto');
+const JWT_SECRET = "dwad128d19rjn01938uj8924htjwodnbi9231h4ien1omnddwad128d19rjn01938uj8924htjwodnbi9231h4ien1omnddwad128d19rjn01938uj8924htjwodnbi9231h4ien1omnd";
 
+exports.verifyToken = (req, res, next) => {
+  const token = req.body.token || req.query.token || req.headers["x-access-token"];
+  if (!token) {
+    return res.status(403).send("A token is required for authentication");
+  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    console.log(decoded);
+    req.email = decoded;
+  } catch (err) {
+    return res.status(401).send("Invalid Token");
+  }
+  return next();
+};
 
 // Create and Save
 exports.create = (req, res) => {
   // Validate request
-  if (!req.body.email) {
+  if (!req.body.email || !req.body.password) {
     res.status(400).send({
       message: "Content can not be empty!"
     });
@@ -16,13 +31,13 @@ exports.create = (req, res) => {
   // Create
   const user = {
     email: req.body.email,
-    password: req.body.password,
-    basket_id: req.body.basket_id,
+    password: crypto.pbkdf2Sync(req.body.password, JWT_SECRET, 1000, 64, `sha512`).toString(`hex`),
+    basket_id: null,
     is_admin: req.body.is_admin,
-    balance: req.body.balance
+    balance: req.body.balance,
+    token: null
   };
-
-  // Save
+  // Save to db
   User.create(user)
     .then(data => {
       res.send(data);
@@ -36,17 +51,14 @@ exports.create = (req, res) => {
 };
 
 exports.findAll = (req, res) => {
-  const email = req.query.email;
-  var condition = email ? { email: { [Op.like]: `%${email}%` } } : null;
-
-  User.findAll({ where: condition })
+  User.findAll()
     .then(data => {
       res.send(data);
     })
     .catch(err => {
       res.status(500).send({
         message:
-          err.message || "Some error occurred while retrieving user."
+          err.message || "Some error occurred while retrieving products."
       });
     });
 };
@@ -66,7 +78,7 @@ exports.findOne = (req, res) => {
     })
     .catch(err => {
       res.status(500).send({
-        message: "Error retrieving User with id=" + id
+        message: "Error retrieving User with id = " + id
       });
     });
 };
@@ -74,17 +86,19 @@ exports.findOne = (req, res) => {
 // Update 
 exports.update = (req, res) => {
   const id = req.params.id;
-
-  User.update(req.body, {
-    where: { id: id }
-  })
+  var data = req.body;
+  var user_data = User.findByPk(id);
+  user_data.email = data.email;
+  user_data.is_admin = data.is_admin;
+  user_data.balance = data.balance;
+  User.update(user_data, { where: { id: id } })
     .then(num => {
       if (num == 1) {
         res.send({
           message: "User was updated successfully."
         });
       } else {
-        res.send({
+        res.status(404).send({
           message: `Cannot update User with id=${id}. Maybe User was not found or req.body is empty!`
         });
       }
@@ -100,9 +114,7 @@ exports.update = (req, res) => {
 exports.delete = (req, res) => {
   const id = req.params.id;
 
-  User.destroy({
-    where: { id: id }
-  })
+  User.destroy({ where: { id: id } })
     .then(num => {
       if (num == 1) {
         res.send({
@@ -110,7 +122,7 @@ exports.delete = (req, res) => {
         });
       } else {
         res.send({
-          message: `Cannot delete User with id=${id}. Maybe User was not found!`
+          message: `Cannot delete User with id = ${id}. Maybe User was not found!`
         });
       }
     })
@@ -123,10 +135,7 @@ exports.delete = (req, res) => {
 
 // Delete all
 exports.deleteAll = (req, res) => {
-  User.destroy({
-    where: {},
-    truncate: false
-  })
+  User.destroy({ where: {}, truncate: false })
     .then(nums => {
       res.send({ message: `${nums} Users were deleted successfully!` });
     })
@@ -138,22 +147,49 @@ exports.deleteAll = (req, res) => {
     });
 };
 
+// Get info
+exports.info = (req, res) => {
+  const email = req.user_email;
+  console.log(email);
+  User.findOne({ where: { email: email } })
+    .then(elem => {
+      res.status(200).send({
+        email: elem.email,
+        balance: elem.balance,
+        basket_id: elem.basket_id,
+        is_admin: elem.is_admin,
+      });
+    })
+    .catch(err => {
+      res.status(500).send({
+        message:
+          err.message || "Some error occurred while removing all users."
+      });
+    });
+};
+
+function SetToken(id, token) {
+  var user = User.findByPk(id);
+  user.token = token;
+  User.update(user, { where: { id: id } });
+}
+
 // Login
 exports.login = (req, res) => {
-  if (!req.body.password) {
+  const email = req.body.email;
+  if (!req.body.password || !email) {
     res.status(400).send({
       message: "Content can not be empty!"
     });
     return;
   }
-  const user = User.findOne({
-    where: {
-      email: req.body.email,
-    },
-  })
+  User.findOne({ where: { email: email } })
     .then(elem => {
-      if (elem.dataValues.password == req.body.password)
-        res.send({ login: true });
+      if (elem.dataValues.password == crypto.pbkdf2Sync(req.body.password, JWT_SECRET, 1000, 64, `sha512`).toString(`hex`)) {
+        const token = jwt.sign(email, JWT_SECRET);
+        SetToken(elem.id, token);
+        res.status(200).send({ token: token });
+      }
       else
         res.status(500).send({ message: "Password not correct." });
     })
@@ -173,7 +209,7 @@ exports.register = (req, res) => {
     });
     return;
   }
-  const user_email = User.findOne({
+  User.findOne({
     where: {
       email: req.body.email,
     },
@@ -184,8 +220,7 @@ exports.register = (req, res) => {
     .catch(err => {
       const user = {
         email: req.body.email,
-        password: req.body.password,
-        basket_id: null,
+        password: crypto.pbkdf2Sync(req.body.password, JWT_SECRET, 1000, 64, `sha512`).toString(`hex`),
         is_admin: false,
         balance: 0
       };

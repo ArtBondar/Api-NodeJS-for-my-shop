@@ -8,6 +8,8 @@ module.exports = app => {
 
     router.post("/register", user.register);
 
+    router.get("/info", user.verifyToken, user.info);
+
     router.get("/", user.findAll);
 
     router.get("/:id", user.findOne);
