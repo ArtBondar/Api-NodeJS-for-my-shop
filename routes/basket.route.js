@@ -14,5 +14,7 @@ module.exports = app => {
 
     router.delete("/", basket.deleteAll);
 
+    router.get("/paid/:id", basket.basketpaid);
+
     app.use('/api/basket', router)
 }

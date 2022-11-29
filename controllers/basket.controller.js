@@ -1,5 +1,7 @@
 const db = require("../models");
 const Basket = db.basket;
+const User = db.user;
+const Product = db.product;
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = "dwad128d19rjn01938uj8924htjwodnbi9231h4ien1omnddwad128d19rjn01938uj8924htjwodnbi9231h4ien1omnddwad128d19rjn01938uj8924htjwodnbi9231h4ien1omnd";
 
@@ -71,7 +73,6 @@ exports.findOne = (req, res) => {
 // Update
 exports.update = (req, res) => {
   const id = req.params.id;
-
   Basket.update(req.body, {
     where: { id: id }
   })
@@ -96,7 +97,6 @@ exports.update = (req, res) => {
 // Delete
 exports.delete = (req, res) => {
   const id = req.params.id;
-
   Basket.destroy({
     where: { id: id }
   })
@@ -133,4 +133,63 @@ exports.deleteAll = (req, res) => {
           err.message || "Some error occurred while removing all baskets."
       });
     });
+};
+
+exports.basketpaid = (req, res) => {
+  // VERIFY TOKEN
+  const { authorization } = req.headers;
+  const id = req.params.id;
+  const token = authorization.split(' ')[1];
+  console.log(`id from params: ${id}`);
+  if (!token) {
+    return res.status(403).send("A token is required for authentication");
+  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    User.findOne({ where: { email: decoded } })
+      .then(elem => {
+        const user_balance = elem.dataValues.balance;
+        const user_id = elem.dataValues.id;
+        Basket.findByPk(id)
+          .then(data => {
+            var product_price = 0.0;
+            var product_count = data.count;
+            console.log(`product_id: ${data.product_id}`);
+            Product.findByPk(data.product_id)
+              .then(data => {
+                product_price = data.price;
+                console.log(`price: ${product_price}, count: ${product_count}, user balance: ${user_balance}`);
+                //
+                if (user_balance >= (product_price * product_count)) {
+                  //
+                  var user_data = { balance: user_balance - (product_price * product_count) };
+                  console.log(user_data);
+                  User.update(user_data, { where: { id: user_id } })
+                    .then(num => {
+                      Basket.update({ is_paid: true }, {
+                        where: { id: id }
+                      })
+                        .then(num => {
+                          res.status(200).send({
+                            message: "Basket was paid."
+                          });
+                        });
+                    });
+                } else {
+                  res.status(404).send({
+                    message: `Balance < Price...`
+                  });
+                }
+              });
+
+          })
+          .catch(err => {
+            res.status(500).send({
+              message: "Error retrieving Basket with id=" + id
+            });
+          });
+      });
+  } catch (err) {
+    return res.status(401).send("Invalid Token");
+  }
 };
