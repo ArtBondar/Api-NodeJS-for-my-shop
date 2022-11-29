@@ -46,6 +46,21 @@ exports.findAll = (req, res) => {
     });
 };
 
+// Find by Category
+exports.findByCategoryId = (req, res) => {
+  const id = req.params.id;
+  Product.findAll({ where: {category_id: id} })
+    .then(data => {
+      res.send(data);
+    })
+    .catch(err => {
+      res.status(500).send({
+        message:
+          err.message || "Some error occurred while retrieving products."
+      });
+    });
+};
+
 // Find One
 exports.findOne = (req, res) => {
   const id = req.params.id;

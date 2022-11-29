@@ -6,6 +6,8 @@ module.exports = app => {
 
     router.get("/", product.findAll);
 
+    router.get("/category/:id", product.findByCategoryId);
+
     router.get("/:id", product.findOne);
 
     router.put("/:id", product.update);
