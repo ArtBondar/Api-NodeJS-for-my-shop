@@ -1,6 +1,5 @@
 const db = require("../models");
 const Category = db.category;
-const Op = db.Sequelize.Op;
 
 exports.create = (req, res) => {
   // Validate request

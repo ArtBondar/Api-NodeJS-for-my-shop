@@ -3,21 +3,7 @@ const User = db.user;
 const jwt = require('jsonwebtoken');
 var crypto = require('crypto');
 const JWT_SECRET = "dwad128d19rjn01938uj8924htjwodnbi9231h4ien1omnddwad128d19rjn01938uj8924htjwodnbi9231h4ien1omnddwad128d19rjn01938uj8924htjwodnbi9231h4ien1omnd";
-
-exports.verifyToken = (req, res, next) => {
-  const token = req.body.token || req.query.token || req.headers["x-access-token"];
-  if (!token) {
-    return res.status(403).send("A token is required for authentication");
-  }
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    console.log(decoded);
-    req.email = decoded;
-  } catch (err) {
-    return res.status(401).send("Invalid Token");
-  }
-  return next();
-};
+const Basket = db.basket;
 
 // Create and Save
 exports.create = (req, res) => {
@@ -147,10 +133,22 @@ exports.deleteAll = (req, res) => {
     });
 };
 
-// Get info
+// Get info for user
 exports.info = (req, res) => {
-  const email = req.user_email;
-  console.log(email);
+  let email = "";
+  // VERIFY TOKEN
+  const { authorization } = req.headers;
+  const token = authorization.split(' ')[1];
+  if (!token) {
+    return res.status(403).send("A token is required for authentication");
+  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    email = decoded;
+  } catch (err) {
+    return res.status(401).send("Invalid Token");
+  }
+  // -- VERIFY TOKEN
   User.findOne({ where: { email: email } })
     .then(elem => {
       res.status(200).send({
@@ -166,6 +164,34 @@ exports.info = (req, res) => {
           err.message || "Some error occurred while removing all users."
       });
     });
+};
+
+// Get Baskets for user
+exports.userbasket = (req, res) => {
+  // VERIFY TOKEN
+  const { authorization } = req.headers;
+  const token = authorization.split(' ')[1];
+  if (!token) {
+    return res.status(403).send("A token is required for authentication");
+  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    User.findOne({ where: { email: decoded } })
+      .then(elem => {
+        Basket.findAll({ where: { user_id: elem.dataValues.id } })
+          .then(data => {
+            res.send(data);
+          })
+          .catch(err => {
+            res.status(500).send({
+              message:
+                err.message || "Some error occurred while removing all users."
+            });
+          });
+      });
+  } catch (err) {
+    return res.status(401).send("Invalid Token");
+  }
 };
 
 function SetToken(id, token) {

@@ -8,7 +8,9 @@ module.exports = app => {
 
     router.post("/register", user.register);
 
-    router.get("/info", user.verifyToken, user.info);
+    router.get("/info", user.info);
+
+    router.get("/baskets", user.userbasket);
 
     router.get("/", user.findAll);
 

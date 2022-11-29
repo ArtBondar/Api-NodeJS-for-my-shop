@@ -1,6 +1,8 @@
 const db = require("../models");
 const Basket = db.basket;
-const Op = db.Sequelize.Op;
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = "dwad128d19rjn01938uj8924htjwodnbi9231h4ien1omnddwad128d19rjn01938uj8924htjwodnbi9231h4ien1omnddwad128d19rjn01938uj8924htjwodnbi9231h4ien1omnd";
+
 
 // Create and Save a new Tutorial
 exports.create = (req, res) => {
