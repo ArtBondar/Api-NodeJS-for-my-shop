@@ -235,31 +235,20 @@ exports.register = (req, res) => {
     });
     return;
   }
-  User.findOne({
-    where: {
-      email: req.body.email,
-    },
-  })
+  User.findOne({ where: { email: req.body.email, } })
     .then(elem => {
       res.status(500).send({ message: `Email ${elem.dataValues.email} is busy.` });
     })
-    .catch(err => {
+    .catch(e => {
       const user = {
         email: req.body.email,
         password: crypto.pbkdf2Sync(req.body.password, JWT_SECRET, 1000, 64, `sha512`).toString(`hex`),
         is_admin: false,
         balance: 0
       };
-      // Save
       User.create(user)
         .then(data => {
           res.send(data);
-        })
-        .catch(err => {
-          res.status(500).send({
-            message:
-              err.message || "Some error occurred while creating the User."
-          });
         });
     });
 };
