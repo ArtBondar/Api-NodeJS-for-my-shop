@@ -16,5 +16,7 @@ module.exports = app => {
 
     router.get("/paid/:id", basket.basketpaid);
 
+    router.post("/product", basket.basketproduct);
+
     app.use('/api/basket', router)
 }

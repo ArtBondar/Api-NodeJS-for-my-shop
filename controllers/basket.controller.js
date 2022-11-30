@@ -140,7 +140,6 @@ exports.basketpaid = (req, res) => {
   const { authorization } = req.headers;
   const id = req.params.id;
   const token = authorization.split(' ')[1];
-  console.log(`id from params: ${id}`);
   if (!token) {
     return res.status(403).send("A token is required for authentication");
   }
@@ -181,7 +180,6 @@ exports.basketpaid = (req, res) => {
                   });
                 }
               });
-
           })
           .catch(err => {
             res.status(500).send({
@@ -190,6 +188,42 @@ exports.basketpaid = (req, res) => {
           });
       });
   } catch (err) {
+    return res.status(401).send("Invalid Token");
+  }
+};
+
+exports.basketproduct = (req, res) => {
+  const { authorization } = req.headers;
+  const product_id = req.body.product_id;
+  const count = req.body.count;
+  const token = authorization.split(' ')[1];
+  if (!token) {
+    return res.status(403).send("A token is required for authentication");
+  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    User.findOne({ where: { email: decoded } })
+      .then(elem => {
+        const basket = {
+          user_id: elem.dataValues.id,
+          product_id: product_id,
+          count: count,
+          is_paid: false
+        };
+        // Save
+        Basket.create(basket)
+          .then(data => {
+            res.send(data);
+          })
+          .catch(err => {
+            res.status(500).send({
+              message:
+                err.message || "Some error occurred while creating the Basket."
+            });
+          });
+      });
+  }
+  catch (err) {
     return res.status(401).send("Invalid Token");
   }
 };
